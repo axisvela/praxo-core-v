@@ -1,6 +1,6 @@
 # PRAXO-CORE for V
 
-V is a native Core implementation with source tag `v/v0.5.0`. It passes all
+V is a native Core implementation with source tag `v/v0.6.0`. It passes all
 eleven shared vector groups with `V 0.5.2` and includes the native
 agent loop, context compaction, memory store, path policy, checkpoint
 allowlist, and tool-call parsing. Tool selection, PII redaction, structured
@@ -115,6 +115,24 @@ Set `options.model_call_limit` and `options.tool_call_limit` to positive values
 to bound calls per run. Nonpositive values are unlimited. The next invocation
 is blocked with `AGENT_MODEL_CALL_LIMIT` or `AGENT_TOOL_CALL_LIMIT`; counters
 are independent for each run. All these options are disabled by default.
+
+## Human-in-the-Loop Approval
+
+Set `options.interrupt_on` to the tool names that require a decision and supply
+`on_interrupt_decision` (returning `praxo.InterruptDecision`) or
+`on_interrupt` (returning `bool`). The interrupt check runs after tool scope,
+initial policy, selection, and call limits, and before `tool.call`. A decision
+of `approve` continues, `edit` replaces `arguments` and reauthorizes them,
+`reject` fails with `AGENT_APPROVAL_DENIED`, and `respond` skips the tool and
+uses `response` as the tool result. An interrupt without a handler fails with
+`AGENT_INTERRUPT_UNHANDLED`; an unknown action or an edit without arguments
+fails with `AGENT_INTERRUPT_DECISION_INVALID`. Interrupts emit
+`tool.interrupt` after a handler is configured.
+
+Edits are reauthorized through `policy_action`, which receives the full
+`Action` including `tool_name` and `arguments`. The legacy `policy` hook still
+receives only the action kind. See
+[`examples/hitl/`](examples/hitl/) for an approve and edit-denial run.
 
 ```v
 fn generate(req praxo.Request) !praxo.Response {
